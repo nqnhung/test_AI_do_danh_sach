@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Dò danh sách hồ sơ</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+:root{box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);
+--bg:#f6f7f9;--card:#fff;--tx:#1b1f24;--mut:#6b7380;--bd:#e1e4e9;--ac:#2f6fed;--act:#fff;--ok:#117a3d;--okb:#e3f6ea;--wa:#8a5a00;--wab:#fff3d6;--no:#b3261e;--nob:#fde8e6}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){color-scheme:dark;--bg:#14171b;--card:#1d2127;--tx:#eceff3;--mut:#9aa3af;--bd:#2c323a;--ac:#6b9bff;--act:#0b1220;--ok:#6fdc9a;--okb:#16301f;--wa:#f2c15c;--wab:#38300f;--no:#ff8f86;--nob:#3b1b19}}
+:root[data-theme="dark"]{color-scheme:dark;--bg:#14171b;--card:#1d2127;--tx:#eceff3;--mut:#9aa3af;--bd:#2c323a;--ac:#6b9bff;--act:#0b1220;--ok:#6fdc9a;--okb:#16301f;--wa:#f2c15c;--wab:#38300f;--no:#ff8f86;--nob:#3b1b19}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--tx);font:16px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+main{max-width:640px;margin:0 auto;padding:16px}
+h1{font-size:20px;margin:4px 0 12px}
+.card{background:var(--card);border:1px solid var(--bd);border-radius:14px;padding:14px;margin-bottom:12px}
+.card h2{font-size:14px;margin:0 0 10px;color:var(--mut);text-transform:uppercase;letter-spacing:.04em}
+.row{display:flex;gap:8px;align-items:center}
+input[type=text],select{width:100%;padding:12px;border:1px solid var(--bd);border-radius:10px;background:var(--bg);color:var(--tx);font-size:16px}
+button{padding:12px 14px;border:0;border-radius:10px;background:var(--ac);color:var(--act);font-size:15px;font-weight:600;cursor:pointer}
+button.sec{background:transparent;color:var(--ac);border:1px solid var(--bd)}
+button.mic.on{background:var(--no);color:#fff}
+button:disabled{opacity:.45}
+.mut{color:var(--mut);font-size:14px}
+.res{border-radius:12px;padding:14px;margin-top:12px;font-weight:600}
+.res.ok{background:var(--okb);color:var(--ok)}.res.wa{background:var(--wab);color:var(--wa)}.res.no{background:var(--nob);color:var(--no)}
+.res small{display:block;font-weight:400;margin-top:4px}
+.res .btns{display:flex;flex-direction:column;gap:6px;margin-top:10px}
+.res .btns button{text-align:left;background:var(--card);color:var(--tx);border:1px solid var(--bd)}
+ul{list-style:none;margin:0;padding:0}
+li{display:flex;justify-content:space-between;gap:8px;align-items:center;padding:9px 0;border-top:1px solid var(--bd)}
+li:first-child{border-top:0}
+.tag{font-size:12px;padding:2px 8px;border-radius:99px;white-space:nowrap}
+.tag.ok{background:var(--okb);color:var(--ok)}.tag.no{background:var(--nob);color:var(--no)}
+li .x{padding:4px 10px;background:transparent;color:var(--mut);border:1px solid var(--bd);font-weight:400}
+.hide{display:none}
+.stats{display:flex;gap:8px;margin-bottom:12px}
+.stats div{flex:1;background:var(--card);border:1px solid var(--bd);border-radius:12px;padding:10px;text-align:center}
+.stats b{display:block;font-size:22px}
+label.chk{display:flex;gap:8px;align-items:center;margin:10px 0 0;font-size:14px}
+</style>
+</head>
+<body>
+<main>
+<h1>Dò danh sách hồ sơ</h1>
+
+<div class="stats">
+  <div><b id="sList">0</b><span class="mut">Trong danh sách</span></div>
+  <div><b id="sOk">0</b><span class="mut">Đã có</span></div>
+  <div><b id="sMiss">0</b><span class="mut">Thiếu</span></div>
+</div>
+
+<div class="card">
+  <h2>1. Import danh sách (Excel)</h2>
+  <input type="file" id="file" accept=".xlsx,.xls,.csv">
+  <div id="cfg" class="hide">
+    <div style="margin-top:10px"><select id="col"></select></div>
+    <label class="chk"><input type="checkbox" id="hdr" checked> Dòng đầu là tiêu đề (bỏ qua)</label>
+    <p class="mut" id="prev" style="margin:8px 0 0"></p>
+  </div>
+</div>
+
+<div class="card">
+  <h2>2. Đọc hoặc gõ tên</h2>
+  <div class="row">
+    <input type="text" id="q" placeholder="Nguyễn Văn An" autocomplete="off">
+    <button id="go">Dò</button>
+    <button id="mic" class="mic" title="Nói tên">🎤</button>
+  </div>
+  <label class="chk"><input type="checkbox" id="voice" checked> Đọc kết quả bằng giọng nói</label>
+  <div class="row" id="vrow" style="margin-top:8px">
+    <select id="vsel"></select>
+    <button id="vtest" class="sec">Nghe thử</button>
+  </div>
+  <div id="msg" class="mut" style="margin-top:8px"></div>
+  <div id="result"></div>
+</div>
+
+<div class="card">
+  <h2>3. Tên còn thiếu</h2>
+  <ul id="missList"></ul>
+  <p class="mut" id="missEmpty">Chưa có tên nào thiếu.</p>
+  <div class="row" style="margin-top:10px">
+    <button id="exp" style="flex:1">Xuất file Excel</button>
+    <button id="reset" class="sec">Làm lại phiên dò</button>
+  </div>
+</div>
+
+<div class="card">
+  <h2>Lịch sử dò</h2>
+  <ul id="logList"></ul>
+  <p class="mut" id="logEmpty">Chưa dò tên nào.</p>
+</div>
+</main>
+
+<script>
+const $=id=>document.getElementById(id);
+let rows=[],names=[],norm=[],missing=[],log=[];
+
+const N=s=>String(s==null?'':s).replace(/[đĐ]/g,'d').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9\s]/g,' ').replace(/\s+/g,' ').trim();
+
+function lev(a,b){
+  if(a===b)return 0;
+  const m=a.length,n=b.length;if(!m)return n;if(!n)return m;
+  let p=Array.from({length:n+1},(_,j)=>j),c=new Array(n+1);
+  for(let i=1;i<=m;i++){c[0]=i;
+    for(let j=1;j<=n;j++){c[j]=Math.min(p[j]+1,c[j-1]+1,p[j-1]+(a[i-1]===b[j-1]?0:1));}
+    [p,c]=[c,p];}
+  return p[n];
+}
+const sim=(a,b)=>1-lev(a,b)/Math.max(a.length,b.length,1);
+
+function save(){try{localStorage.setItem('dohs',JSON.stringify({names,missing,log}));}catch(e){}}
+function load(){try{const d=JSON.parse(localStorage.getItem('dohs')||'null');if(d){names=d.names||[];missing=d.missing||[];log=d.log||[];norm=names.map(N);}}catch(e){}}
+
+function buildNames(){
+  const col=+$('col').value,h=$('hdr').checked?1:0;
+  names=rows.slice(h).map(r=>String((r&&r[col])??'').trim()).filter(Boolean);
+  norm=names.map(N);
+  $('prev').textContent='Xem trước: '+names.slice(0,3).join(' · ');
+  save();render();
+}
+
+$('file').addEventListener('change',async e=>{
+  const f=e.target.files[0];if(!f)return;
+  try{
+    const wb=XLSX.read(await f.arrayBuffer(),{type:'array'});
+    rows=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{header:1,defval:''});
+    const w=Math.max(1,...rows.slice(0,20).map(r=>r.length));
+    $('col').innerHTML='';
+    for(let i=0;i<w;i++){const o=document.createElement('option');o.value=i;
+      o.textContent='Cột '+String.fromCharCode(65+i)+(rows[0]&&rows[0][i]!==''?' – '+rows[0][i]:'');$('col').appendChild(o);}
+    $('cfg').classList.remove('hide');
+    buildNames();
+  }catch(err){$('msg').textContent='Không đọc được file này. Hãy thử lưu lại dạng .xlsx.';}
+});
+$('col').onchange=buildNames;$('hdr').onchange=buildNames;
+
+// === XỬ LÝ GIỌNG ĐỌC TIẾNG VIỆT ===
+let viVoices = [];
+let audioFallback = null;
+
+// Phát giọng tiếng Việt chuẩn qua Google TTS (trực tuyến)
+function playGoogleTTS(text) {
+  try {
+    if (audioFallback) {
+      audioFallback.pause();
+      audioFallback.currentTime = 0;
+    }
+    const url = 'https://translate.google.com/translate_tts?ie=UTF-8&tl=vi&client=tw-ob&q=' + encodeURIComponent(text);
+    audioFallback = new Audio(url);
+    audioFallback.play().catch(() => {});
+  } catch (e) {}
+}
+
+const vScore = v => 
+  (/natural|online/i.test(v.name) ? 4 : 0) + 
+  (/google/i.test(v.name) ? 3 : 0) + 
+  (/hoaimy|namminh|linh/i.test(v.name) ? 2 : 0);
+
+function loadVoices(){
+  const sel = $('vsel');
+  sel.innerHTML = '';
+
+  // Thêm lựa chọn Google TTS Online (luôn chuẩn Tiếng Việt trên mọi máy)
+  const optGoogle = document.createElement('option');
+  optGoogle.value = 'google_online_tts';
+  optGoogle.textContent = '⭐ Giọng Google (Chuẩn tiếng Việt - Trực tuyến)';
+  sel.appendChild(optGoogle);
+
+  if (window.speechSynthesis) {
+    const allVoices = speechSynthesis.getVoices();
+    viVoices = allVoices.filter(v => /^vi/i.test(v.lang) || /vietnamese/i.test(v.name)).sort((a,b) => vScore(b) - vScore(a));
+    
+    viVoices.forEach(v => {
+      const o = document.createElement('option');
+      o.value = v.name;
+      o.textContent = '🔊 ' + v.name.replace(/^Microsoft\s+/i, '').replace(/\s+-\s+Vietnamese.*$/i, '');
+      sel.appendChild(o);
+    });
+  }
+
+  let saved = '';
+  try { saved = localStorage.getItem('dohsVoice') || ''; } catch(e){}
+
+  if (saved && (saved === 'google_online_tts' || viVoices.some(v => v.name === saved))) {
+    sel.value = saved;
+  } else if (viVoices.length > 0) {
+    // Nếu trong máy có giọng Việt xịn (Edge Natural / Chrome), ưu tiên chọn giọng đó
+    sel.value = viVoices[0].name;
+  } else {
+    sel.value = 'google_online_tts';
+  }
+}
+
+function say(t){
+  try{
+    if(!$('voice').checked) return;
+    const selectedVoice = $('vsel').value;
+
+    // Nếu chọn Google TTS hoặc máy tính không có sẵn giọng Việt nào
+    if (selectedVoice === 'google_online_tts' || !window.speechSynthesis || viVoices.length === 0) {
+      if (window.speechSynthesis) window.speechSynthesis.cancel();
+      playGoogleTTS(t);
+      return;
+    }
+
+    // Dùng Web Speech API của trình duyệt
+    const s = window.speechSynthesis;
+    s.cancel();
+    const u = new SpeechSynthesisUtterance(t);
+    u.lang = 'vi-VN';
+    u.rate = 1.0;
+    u.pitch = 1.0;
+    
+    const v = viVoices.find(x => x.name === selectedVoice);
+    if(v) u.voice = v;
+    s.speak(u);
+  } catch(e) {
+    playGoogleTTS(t);
+  }
+}
+
+if(window.speechSynthesis){
+  speechSynthesis.onvoiceschanged = loadVoices;
+}
+$('vsel').onchange = () => {
+  try { localStorage.setItem('dohsVoice', $('vsel').value); } catch(e){}
+  say('Dạ có rồi');
+};
+$('vtest').onclick = () => say('Có rồi. Nguyễn Văn An có trong danh sách.');
+
+function addLog(name,ok){log.unshift({name,ok});if(log.length>200)log.pop();}
+function addMissing(name){if(!missing.some(m=>N(m)===N(name)))missing.push(name);}
+
+function showResult(cls,title,sub,btns){
+  const r=$('result');r.innerHTML='';
+  const d=document.createElement('div');d.className='res '+cls;
+  d.textContent=title;
+  if(sub){const s=document.createElement('small');s.textContent=sub;d.appendChild(s);}
+  if(btns&&btns.length){const b=document.createElement('div');b.className='btns';
+    btns.forEach(([t,fn])=>{const x=document.createElement('button');x.textContent=t;x.onclick=fn;b.appendChild(x);});d.appendChild(b);}
+  r.appendChild(d);
+}
+
+function check(q){
+  q=q.trim();const n=N(q);
+  if(!n)return;
+  if(!names.length){$('msg').textContent='Hãy import danh sách trước.';return;}
+  $('msg').textContent='';
+  const i=norm.indexOf(n);
+  if(i>=0){
+    addLog(names[i],true);
+    showResult('ok','✓ CÓ',names[i]);say('Có rồi');
+    $('q').value='';save();render();return;
+  }
+  const cand=norm.map((s,k)=>[sim(n,s),k]).filter(x=>x[0]>=0.78).sort((a,b)=>b[0]-a[0]).slice(0,3);
+  if(cand.length){
+    const btns=cand.map(([sc,k])=>['Đúng là: '+names[k]+' ('+Math.round(sc*100)+'%)',()=>{
+      addLog(names[k],true);showResult('ok','✓ CÓ',names[k]);say('Có rồi');$('q').value='';save();render();}]);
+    btns.push(['Không phải ai trong số này → thêm vào thiếu',()=>markMissing(q)]);
+    say('Gần giống, bạn xác nhận giúp');
+    showResult('wa','Gần giống, bạn xác nhận giúp','Nghe được: “'+q+'”',btns);
+    return;
+  }
+  markMissing(q);
+}
+function markMissing(q){
+  addMissing(q);addLog(q,false);
+  showResult('no','✗ KHÔNG CÓ','Đã thêm “'+q+'” vào danh sách thiếu');say('Dạ không có');
+  $('q').value='';save();render();
+}
+
+function render(){
+  $('sList').textContent=names.length;
+  $('sOk').textContent=new Set(log.filter(l=>l.ok).map(l=>l.name)).size;
+  $('sMiss').textContent=missing.length;
+  const ml=$('missList');ml.innerHTML='';
+  missing.forEach((m,i)=>{const li=document.createElement('li');const s=document.createElement('span');s.textContent=(i+1)+'. '+m;
+    const x=document.createElement('button');x.className='x';x.textContent='Xóa';x.onclick=()=>{missing.splice(i,1);save();render();};
+    li.append(s,x);ml.appendChild(li);});
+  $('missEmpty').classList.toggle('hide',missing.length>0);
+  const ll=$('logList');ll.innerHTML='';
+  log.slice(0,30).forEach(l=>{const li=document.createElement('li');const s=document.createElement('span');s.textContent=l.name;
+    const t=document.createElement('span');t.className='tag '+(l.ok?'ok':'no');t.textContent=l.ok?'Có':'Thiếu';
+    li.append(s,t);ll.appendChild(li);});
+  $('logEmpty').classList.toggle('hide',log.length>0);
+}
+
+$('go').onclick=()=>check($('q').value);
+$('q').addEventListener('keydown',e=>{if(e.key==='Enter')check($('q').value);});
+
+$('reset').onclick=()=>{if(confirm('Xóa danh sách thiếu và lịch sử dò? Danh sách gốc vẫn giữ.')){missing=[];log=[];$('result').innerHTML='';save();render();}};
+
+$('exp').onclick=async()=>{
+  if(!missing.length){$('msg').textContent='Chưa có tên thiếu để xuất.';return;}
+  const ws=XLSX.utils.aoa_to_sheet([['STT','Họ tên'],...missing.map((m,i)=>[i+1,m])]);
+  ws['!cols']=[{wch:6},{wch:36}];
+  const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'Thiếu');
+  const buf=XLSX.write(wb,{bookType:'xlsx',type:'array'});
+  try{
+    const d=await (window.claude&&window.claude.use?window.claude.use('downloads'):null);
+    if(!d){const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([buf],{type:'application/octet-stream'}));a.download='ten-thieu.xlsx';document.body.appendChild(a);a.click();a.remove();$('msg').textContent='Đã xuất file.';return;}
+    await d.save({filename:'ten-thieu.xlsx',data:buf});
+    $('msg').textContent='Đã xuất file.';
+  }catch(err){if(!err||err.code!=='declined')$('msg').textContent='Không lưu được file ('+((err&&err.code)||'lỗi')+').';}
+};
+
+const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+if(!SR){$('mic').classList.add('hide');}
+else{
+  let rec=null;
+  $('mic').onclick=()=>{
+    if(rec){rec.stop();return;}
+    rec=new SR();rec.lang='vi-VN';rec.interimResults=false;rec.maxAlternatives=1;
+    rec.onstart=()=>{$('mic').classList.add('on');$('msg').textContent='Đang nghe… hãy đọc tên.';};
+    rec.onresult=e=>{const t=e.results[0][0].transcript;$('q').value=t;check(t);};
+    rec.onerror=e=>{
+      let framed=false;try{framed=window.self!==window.top;}catch(x){framed=true;}
+      const c=e.error||'unknown';
+      if(c==='not-allowed'||c==='service-not-allowed'){
+        $('msg').textContent=framed
+          ?'Micro bị chặn ('+c+'). Trang đang chạy trong khung nhúng nên trình duyệt không cho dùng micro dù bạn đã cho phép. Hãy mở file HTML trực tiếp hoặc đưa lên hosting riêng; trong lúc đó bạn gõ tên cũng được.'
+          :'Micro bị chặn ('+c+'). Bấm ổ khóa cạnh thanh địa chỉ, bật Micro rồi tải lại trang. Bạn gõ tên cũng được.';
+      }else if(c==='no-speech'){$('msg').textContent='Không nghe thấy tiếng, thử lại gần micro hơn.';}
+      else if(c==='network'){$('msg').textContent='Cần có mạng để nhận dạng giọng nói.';}
+      else{$('msg').textContent='Không nghe được ('+c+'), thử lại hoặc gõ tên.';}
+    };
+    rec.onend=()=>{$('mic').classList.remove('on');rec=null;};
+    try{rec.start();}catch(e){rec=null;}
+  };
+}
+
+load();render();loadVoices();
+</script>
+</body>
+</html>
