@@ -4,7 +4,8 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Dò danh sách hồ sơ</title>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<!-- Dùng xlsx-js-style để hỗ trợ tô màu nền và chữ trong file Excel xuất ra -->
+<script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js"></script>
 <style>
 :root{box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);
 --bg:#f6f7f9;--card:#fff;--tx:#1b1f24;--mut:#6b7380;--bd:#e1e4e9;--ac:#2f6fed;--act:#fff;--ok:#117a3d;--okb:#e3f6ea;--wa:#8a5a00;--wab:#fff3d6;--no:#b3261e;--nob:#fde8e6}
@@ -40,6 +41,8 @@ li .x{padding:4px 10px;background:transparent;color:var(--mut);border:1px solid 
 .stats div{flex:1;background:var(--card);border:1px solid var(--bd);border-radius:12px;padding:10px;text-align:center}
 .stats b{display:block;font-size:22px}
 label.chk{display:flex;gap:8px;align-items:center;margin:10px 0 0;font-size:14px}
+.btn-yellow{background:#facc15;color:#000;border:1px solid #eab308}
+.btn-yellow:hover{background:#eab308}
 </style>
 </head>
 <body>
@@ -79,12 +82,18 @@ label.chk{display:flex;gap:8px;align-items:center;margin:10px 0 0;font-size:14px
 </div>
 
 <div class="card">
-  <h2>3. Tên còn thiếu</h2>
+  <h2>3. Tên còn thiếu & Xuất file</h2>
   <ul id="missList"></ul>
   <p class="mut" id="missEmpty">Chưa có tên nào thiếu.</p>
-  <div class="row" style="margin-top:10px">
-    <button id="exp" style="flex:1">Xuất file Excel</button>
-    <button id="reset" class="sec">Làm lại phiên dò</button>
+  
+  <div class="row" style="margin-top:14px; flex-wrap:wrap; gap:8px">
+    <button id="expChecked" class="btn-yellow" style="flex:1" title="Xuất lại danh sách gốc kèm bôi vàng các tên đã có">
+      📊 Xuất DS gốc (Bôi vàng tên có)
+    </button>
+    <button id="exp" style="flex:1" title="Xuất danh sách các tên bị thiếu">
+      📋 Xuất DS thiếu
+    </button>
+    <button id="reset" class="sec">Làm lại</button>
   </div>
 </div>
 
@@ -112,8 +121,25 @@ function lev(a,b){
 }
 const sim=(a,b)=>1-lev(a,b)/Math.max(a.length,b.length,1);
 
-function save(){try{localStorage.setItem('dohs',JSON.stringify({names,missing,log}));}catch(e){}}
-function load(){try{const d=JSON.parse(localStorage.getItem('dohs')||'null');if(d){names=d.names||[];missing=d.missing||[];log=d.log||[];norm=names.map(N);}}catch(e){}}
+function save(){
+  try{
+    localStorage.setItem('dohs',JSON.stringify({names,missing,log,rows,col:+$('col').value,hdr:$('hdr').checked}));
+  }catch(e){}
+}
+
+function load(){
+  try{
+    const d=JSON.parse(localStorage.getItem('dohs')||'null');
+    if(d){
+      names=d.names||[];
+      missing=d.missing||[];
+      log=d.log||[];
+      rows=d.rows||[];
+      norm=names.map(N);
+      if(d.hdr!==undefined)$('hdr').checked=d.hdr;
+    }
+  }catch(e){}
+}
 
 function buildNames(){
   const col=+$('col').value,h=$('hdr').checked?1:0;
@@ -130,8 +156,11 @@ $('file').addEventListener('change',async e=>{
     rows=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{header:1,defval:''});
     const w=Math.max(1,...rows.slice(0,20).map(r=>r.length));
     $('col').innerHTML='';
-    for(let i=0;i<w;i++){const o=document.createElement('option');o.value=i;
-      o.textContent='Cột '+String.fromCharCode(65+i)+(rows[0]&&rows[0][i]!==''?' – '+rows[0][i]:'');$('col').appendChild(o);}
+    for(let i=0;i<w;i++){
+      const o=document.createElement('option');o.value=i;
+      o.textContent='Cột '+String.fromCharCode(65+i)+(rows[0]&&rows[0][i]!==''?' – '+rows[0][i]:'');
+      $('col').appendChild(o);
+    }
     $('cfg').classList.remove('hide');
     buildNames();
   }catch(err){$('msg').textContent='Không đọc được file này. Hãy thử lưu lại dạng .xlsx.';}
@@ -142,7 +171,6 @@ $('col').onchange=buildNames;$('hdr').onchange=buildNames;
 let viVoices = [];
 let audioFallback = null;
 
-// Phát giọng tiếng Việt chuẩn qua Google TTS (trực tuyến)
 function playGoogleTTS(text) {
   try {
     if (audioFallback) {
@@ -164,7 +192,6 @@ function loadVoices(){
   const sel = $('vsel');
   sel.innerHTML = '';
 
-  // Thêm lựa chọn Google TTS Online (luôn chuẩn Tiếng Việt trên mọi máy)
   const optGoogle = document.createElement('option');
   optGoogle.value = 'google_online_tts';
   optGoogle.textContent = '⭐ Giọng Google (Chuẩn tiếng Việt - Trực tuyến)';
@@ -188,7 +215,6 @@ function loadVoices(){
   if (saved && (saved === 'google_online_tts' || viVoices.some(v => v.name === saved))) {
     sel.value = saved;
   } else if (viVoices.length > 0) {
-    // Nếu trong máy có giọng Việt xịn (Edge Natural / Chrome), ưu tiên chọn giọng đó
     sel.value = viVoices[0].name;
   } else {
     sel.value = 'google_online_tts';
@@ -200,14 +226,12 @@ function say(t){
     if(!$('voice').checked) return;
     const selectedVoice = $('vsel').value;
 
-    // Nếu chọn Google TTS hoặc máy tính không có sẵn giọng Việt nào
     if (selectedVoice === 'google_online_tts' || !window.speechSynthesis || viVoices.length === 0) {
       if (window.speechSynthesis) window.speechSynthesis.cancel();
       playGoogleTTS(t);
       return;
     }
 
-    // Dùng Web Speech API của trình duyệt
     const s = window.speechSynthesis;
     s.cancel();
     const u = new SpeechSynthesisUtterance(t);
@@ -228,7 +252,7 @@ if(window.speechSynthesis){
 }
 $('vsel').onchange = () => {
   try { localStorage.setItem('dohsVoice', $('vsel').value); } catch(e){}
-  say('Dạ có rồi');
+  say('Có rồi');
 };
 $('vtest').onclick = () => say('Có rồi. Nguyễn Văn An có trong danh sách.');
 
@@ -267,9 +291,10 @@ function check(q){
   }
   markMissing(q);
 }
+
 function markMissing(q){
   addMissing(q);addLog(q,false);
-  showResult('no','✗ KHÔNG CÓ','Đã thêm “'+q+'” vào danh sách thiếu');say('Dạ không có');
+  showResult('no','✗ KHÔNG CÓ','Đã thêm “'+q+'” vào danh sách thiếu');say('Không có');
   $('q').value='';save();render();
 }
 
@@ -277,59 +302,158 @@ function render(){
   $('sList').textContent=names.length;
   $('sOk').textContent=new Set(log.filter(l=>l.ok).map(l=>l.name)).size;
   $('sMiss').textContent=missing.length;
+  
   const ml=$('missList');ml.innerHTML='';
-  missing.forEach((m,i)=>{const li=document.createElement('li');const s=document.createElement('span');s.textContent=(i+1)+'. '+m;
-    const x=document.createElement('button');x.className='x';x.textContent='Xóa';x.onclick=()=>{missing.splice(i,1);save();render();};
-    li.append(s,x);ml.appendChild(li);});
+  missing.forEach((m,i)=>{
+    const li=document.createElement('li');
+    const s=document.createElement('span');s.textContent=(i+1)+'. '+m;
+    const x=document.createElement('button');x.className='x';x.textContent='Xóa';
+    x.onclick=()=>{missing.splice(i,1);save();render();};
+    li.append(s,x);ml.appendChild(li);
+  });
   $('missEmpty').classList.toggle('hide',missing.length>0);
+
+  // Lịch sử dò giữ nguyên bình thường
   const ll=$('logList');ll.innerHTML='';
-  log.slice(0,30).forEach(l=>{const li=document.createElement('li');const s=document.createElement('span');s.textContent=l.name;
+  log.slice(0,30).forEach(l=>{
+    const li=document.createElement('li');
+    const s=document.createElement('span');s.textContent=l.name;
     const t=document.createElement('span');t.className='tag '+(l.ok?'ok':'no');t.textContent=l.ok?'Có':'Thiếu';
-    li.append(s,t);ll.appendChild(li);});
+    li.append(s,t);ll.appendChild(li);
+  });
   $('logEmpty').classList.toggle('hide',log.length>0);
 }
 
 $('go').onclick=()=>check($('q').value);
 $('q').addEventListener('keydown',e=>{if(e.key==='Enter')check($('q').value);});
 
-$('reset').onclick=()=>{if(confirm('Xóa danh sách thiếu và lịch sử dò? Danh sách gốc vẫn giữ.')){missing=[];log=[];$('result').innerHTML='';save();render();}};
-
-$('exp').onclick=async()=>{
-  if(!missing.length){$('msg').textContent='Chưa có tên thiếu để xuất.';return;}
-  const ws=XLSX.utils.aoa_to_sheet([['STT','Họ tên'],...missing.map((m,i)=>[i+1,m])]);
-  ws['!cols']=[{wch:6},{wch:36}];
-  const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'Thiếu');
-  const buf=XLSX.write(wb,{bookType:'xlsx',type:'array'});
-  try{
-    const d=await (window.claude&&window.claude.use?window.claude.use('downloads'):null);
-    if(!d){const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([buf],{type:'application/octet-stream'}));a.download='ten-thieu.xlsx';document.body.appendChild(a);a.click();a.remove();$('msg').textContent='Đã xuất file.';return;}
-    await d.save({filename:'ten-thieu.xlsx',data:buf});
-    $('msg').textContent='Đã xuất file.';
-  }catch(err){if(!err||err.code!=='declined')$('msg').textContent='Không lưu được file ('+((err&&err.code)||'lỗi')+').';}
+$('reset').onclick=()=>{
+  if(confirm('Xóa danh sách thiếu và lịch sử dò? Danh sách gốc vẫn giữ.')){
+    missing=[];log=[];$('result').innerHTML='';save();render();
+  }
 };
 
-const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
-if(!SR){$('mic').classList.add('hide');}
-else{
-  let rec=null;
-  $('mic').onclick=()=>{
-    if(rec){rec.stop();return;}
-    rec=new SR();rec.lang='vi-VN';rec.interimResults=false;rec.maxAlternatives=1;
-    rec.onstart=()=>{$('mic').classList.add('on');$('msg').textContent='Đang nghe… hãy đọc tên.';};
-    rec.onresult=e=>{const t=e.results[0][0].transcript;$('q').value=t;check(t);};
-    rec.onerror=e=>{
-      let framed=false;try{framed=window.self!==window.top;}catch(x){framed=true;}
-      const c=e.error||'unknown';
-      if(c==='not-allowed'||c==='service-not-allowed'){
-        $('msg').textContent=framed
-          ?'Micro bị chặn ('+c+'). Trang đang chạy trong khung nhúng nên trình duyệt không cho dùng micro dù bạn đã cho phép. Hãy mở file HTML trực tiếp hoặc đưa lên hosting riêng; trong lúc đó bạn gõ tên cũng được.'
-          :'Micro bị chặn ('+c+'). Bấm ổ khóa cạnh thanh địa chỉ, bật Micro rồi tải lại trang. Bạn gõ tên cũng được.';
-      }else if(c==='no-speech'){$('msg').textContent='Không nghe thấy tiếng, thử lại gần micro hơn.';}
-      else if(c==='network'){$('msg').textContent='Cần có mạng để nhận dạng giọng nói.';}
-      else{$('msg').textContent='Không nghe được ('+c+'), thử lại hoặc gõ tên.';}
+// === 1. XUẤT FILE DANH SÁCH GỐC (BÔI VÀNG TÊN ĐÃ CÓ) ===
+$('expChecked').onclick = async () => {
+  if (!rows || !rows.length) {
+    $('msg').textContent = 'Chưa có danh sách gốc để xuất.';
+    return;
+  }
+
+  const col = +$('col').value || 0;
+  const h = $('hdr').checked ? 1 : 0;
+  const foundNames = new Set(log.filter(l => l.ok).map(l => N(l.name)));
+
+  // Tạo sheet từ dữ liệu bảng gốc
+  const ws = XLSX.utils.aoa_to_sheet(rows);
+
+  // Duyệt qua từng dòng để bôi màu vàng chữ đen cho những người "CÓ"
+  for (let r = h; r < rows.length; r++) {
+    const val = rows[r] ? rows[r][col] : '';
+    if (val && foundNames.has(N(val))) {
+      const cellRef = XLSX.utils.encode_cell({ r: r, c: col });
+      if (!ws[cellRef]) ws[cellRef] = { t: 's', v: val };
+      
+      // Định dạng: Nền vàng (#FFFF00), Chữ đen đậm
+      ws[cellRef].s = {
+        fill: {
+          fgColor: { rgb: "FFFF00" }
+        },
+        font: {
+          color: { rgb: "000000" },
+          bold: true
+        },
+        alignment: {
+          vertical: "center"
+        }
+      };
+    }
+  }
+
+  // Tự động căn chỉnh độ rộng các cột cho đẹp
+  if (rows[0]) {
+    ws['!cols'] = rows[0].map((_, cIdx) => {
+      let maxLen = 10;
+      rows.forEach(r => {
+        const len = String(r[cIdx] || '').length;
+        if (len > maxLen) maxLen = len;
+      });
+      return { wch: Math.min(maxLen + 4, 40) };
+    });
+  }
+
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Danh sách đã dò');
+  const buf = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+
+  downloadBlob(buf, 'danh-sach-da-do.xlsx', 'Đã xuất file danh sách gốc có bôi vàng.');
+};
+
+// === 2. XUẤT FILE DANH SÁCH THIẾU ===
+$('exp').onclick = async () => {
+  if (!missing.length) {
+    $('msg').textContent = 'Chưa có tên thiếu để xuất.';
+    return;
+  }
+  const ws = XLSX.utils.aoa_to_sheet([['STT', 'Họ tên'], ...missing.map((m, i) => [i + 1, m])]);
+  ws['!cols'] = [{ wch: 6 }, { wch: 36 }];
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Thiếu');
+  const buf = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+
+  downloadBlob(buf, 'ten-thieu.xlsx', 'Đã xuất file danh sách thiếu.');
+};
+
+// Hàm hỗ trợ tải file về máy
+async function downloadBlob(buf, filename, successMsg) {
+  try {
+    const d = await (window.claude && window.claude.use ? window.claude.use('downloads') : null);
+    if (!d) {
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(new Blob([buf], { type: 'application/octet-stream' }));
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      $('msg').textContent = successMsg;
+      return;
+    }
+    await d.save({ filename, data: buf });
+    $('msg').textContent = successMsg;
+  } catch (err) {
+    if (!err || err.code !== 'declined') $('msg').textContent = 'Không lưu được file.';
+  }
+}
+
+// === MICROPHONE RECOGNITION ===
+const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+if (!SR) {
+  $('mic').classList.add('hide');
+} else {
+  let rec = null;
+  $('mic').onclick = () => {
+    if (rec) { rec.stop(); return; }
+    rec = new SR();
+    rec.lang = 'vi-VN';
+    rec.interimResults = false;
+    rec.maxAlternatives = 1;
+    rec.onstart = () => { $('mic').classList.add('on'); $('msg').textContent = 'Đang nghe… hãy đọc tên.'; };
+    rec.onresult = e => { const t = e.results[0][0].transcript; $('q').value = t; check(t); };
+    rec.onerror = e => {
+      let framed = false; try { framed = window.self !== window.top; } catch(x) { framed = true; }
+      const c = e.error || 'unknown';
+      if (c === 'not-allowed' || c === 'service-not-allowed') {
+        $('msg').textContent = framed
+          ? 'Micro bị chặn ('+c+'). Trang đang chạy trong khung nhúng.'
+          : 'Micro bị chặn ('+c+'). Bấm ổ khóa cạnh thanh địa chỉ, bật Micro rồi tải lại trang.';
+      } else if (c === 'no-speech') {
+        $('msg').textContent = 'Không nghe thấy tiếng, thử lại gần micro hơn.';
+      } else {
+        $('msg').textContent = 'Lỗi micro (' + c + '), thử lại hoặc gõ tên.';
+      }
     };
-    rec.onend=()=>{$('mic').classList.remove('on');rec=null;};
-    try{rec.start();}catch(e){rec=null;}
+    rec.onend = () => { $('mic').classList.remove('on'); rec = null; };
+    try { rec.start(); } catch(e) { rec = null; }
   };
 }
 
