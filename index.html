@@ -252,7 +252,7 @@ if(window.speechSynthesis){
 }
 $('vsel').onchange = () => {
   try { localStorage.setItem('dohsVoice', $('vsel').value); } catch(e){}
-  say('Có rồi');
+  say('Dạ có rồi');
 };
 $('vtest').onclick = () => say('Có rồi. Nguyễn Văn An có trong danh sách.');
 
@@ -294,7 +294,7 @@ function check(q){
 
 function markMissing(q){
   addMissing(q);addLog(q,false);
-  showResult('no','✗ KHÔNG CÓ','Đã thêm “'+q+'” vào danh sách thiếu');say('Không có');
+  showResult('no','✗ KHÔNG CÓ','Đã thêm “'+q+'” vào danh sách thiếu');say('Dạ Không có');
   $('q').value='';save();render();
 }
 
