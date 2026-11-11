@@ -88,10 +88,10 @@ label.chk{display:flex;gap:8px;align-items:center;margin:10px 0 0;font-size:14px
   
   <div class="row" style="margin-top:14px; flex-wrap:wrap; gap:8px">
     <button id="expChecked" class="btn-yellow" style="flex:1" title="Xuất lại danh sách gốc kèm bôi vàng các tên đã có">
-      📊 Xuất DS gốc (Bôi vàng tên có)
+      Xuất DS gốc <br> (Bôi vàng tên có)
     </button>
     <button id="exp" style="flex:1" title="Xuất danh sách các tên bị thiếu">
-      📋 Xuất DS thiếu
+      📋 DS thiếu
     </button>
     <button id="reset" class="sec">Làm lại</button>
   </div>
@@ -194,7 +194,7 @@ function loadVoices(){
 
   const optGoogle = document.createElement('option');
   optGoogle.value = 'google_online_tts';
-  optGoogle.textContent = '⭐ Giọng Google (Chuẩn tiếng Việt - Trực tuyến)';
+  optGoogle.textContent = '⭐ Giọng Google';
   sel.appendChild(optGoogle);
 
   if (window.speechSynthesis) {
